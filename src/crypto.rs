@@ -11,9 +11,7 @@ impl ToString for Sha256GenericArray {
 }
 
 pub fn as_sha256(bytes: &[u8]) -> Sha256GenericArray {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    Sha256GenericArray(hasher.finalize())
+    Sha256GenericArray(Sha256::digest(bytes))
 }
 
 #[cfg(test)]
