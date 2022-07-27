@@ -60,7 +60,7 @@ impl MerkleNode {
         let node_list = hash_list
             .iter()
             .map(|hash| hash.as_bytes())
-            .map(|bytes| crypto::as_sha256(bytes))
+            .map(crypto::as_sha256)
             .map(|hash| hash.to_string())
             .map(Self::empty_new)
             .collect();
