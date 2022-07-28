@@ -121,17 +121,11 @@ impl MerkleTree {
 
         match (&self.root.left, &self.root.right) {
             (None, None) => None,
+            (Some(node), None) if node.hash == hash => Some(Left(*node.clone())),
+            (None, Some(node)) if node.hash == hash => Some(Right(*node.clone())),
             (Some(node), None) | (None, Some(node)) => {
-                if node.hash == hash {
-                    if self.root.left.is_some() {
-                        Some(Left(*node.clone()))
-                    } else {
-                        Some(Right(*node.clone()))
-                    }
-                } else {
-                    let tree = MerkleTree::new(*node.clone());
-                    tree.find_sibling_of(hash)
-                }
+                let tree = MerkleTree::new(*node.clone());
+                tree.find_sibling_of(hash)
             }
             (Some(left), Some(right)) => {
                 if left.hash == hash {
