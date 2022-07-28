@@ -88,26 +88,24 @@ mod tests {
 
     #[test]
     fn generate_root_node() {
-        fn assert_hash_eq(hash_list: Vec<String>, hash: &str) {
-            let root = MerkleNode::from_hash_list(hash_list);
+        macro_rules! assert_hash_eq {
+            ($actual: expr, $expected: expr) => {
+                let node = MerkleNode::from_hash_list(
+                    $actual.into_iter().map(ToOwned::to_owned).collect(),
+                );
 
-            assert_eq!(root.hash, hash);
+                assert_eq!(node.hash, $expected);
+            };
         }
 
-        assert_hash_eq(
-            ["A", "B", "C", "D", "E", "F", "G", "H"]
-                .into_iter()
-                .map(ToOwned::to_owned)
-                .collect(),
-            "24A5154C51E5EA8F72DBFCD82F42202F94BB34E1A1D764814D0A0BE012DD866E",
+        assert_hash_eq!(
+            ["A", "B", "C", "D", "E", "F", "G", "H"],
+            "24A5154C51E5EA8F72DBFCD82F42202F94BB34E1A1D764814D0A0BE012DD866E"
         );
 
-        assert_hash_eq(
-            ["A", "B", "C", "D", "E"]
-                .into_iter()
-                .map(ToOwned::to_owned)
-                .collect(),
-            "AE4F3A195A3CBD6A3057C205DEF94520930F03F51F73C5A540D8FDAB05163FEF",
-        )
+        assert_hash_eq!(
+            ["A", "B", "C", "D", "E"],
+            "AE4F3A195A3CBD6A3057C205DEF94520930F03F51F73C5A540D8FDAB05163FEF"
+        );
     }
 }
