@@ -108,10 +108,6 @@ impl LocationNode {
     pub fn hash(&self) -> &str {
         &self.node().hash
     }
-
-    pub fn cmp_hash(&self, other: String) -> bool {
-        self.hash() == other
-    }
 }
 
 impl From<MerkleNode> for MerkleTree {
@@ -159,32 +155,32 @@ impl MerkleTree {
         }
     }
 
-    // pub fn verify(&self, hash: String) -> bool {
-    //     let mut sibling = self.find_sibling_of(hash.clone());
+    pub fn verify(&self, hash: String) -> bool {
+        let mut sibling = self.find_sibling_of(hash.clone());
 
-    //     while let Some(node) = &sibling {
-    //         match &node {
-    //             LocationNode::Root(_) => println!("root"),
-    //             LocationNode::Left(_) => println!("left"),
-    //             LocationNode::Right(_) => println!("right"),
-    //         }
+        let mut hash = hash;
+        while let Some(node) = &sibling {
+            let combine_text = match node {
+                LocationNode::Root(node) => return node.hash == hash,
+                LocationNode::Left(node) => format!("{}{}", node.hash, hash),
+                LocationNode::Right(node) => format!("{}{}", hash, node.hash),
+            };
 
-    //         let combine_text = match node {
-    //             LocationNode::Root(node) => return node.hash == hash,
-    //             LocationNode::Left(node) => format!("{}{}", node.hash, hash),
-    //             LocationNode::Right(node) => format!("{}{}", hash, node.hash),
-    //         };
+            #[cfg(feature = "hash")]
+            {
+                hash = crypto::as_sha256(combine_text.as_bytes()).to_string();
+            };
 
-    //         #[cfg(feature = "hash")]
-    //         let hash = crypto::as_sha256(combine_text.as_bytes()).to_string();
-    //         println!("{hash}");
-    //         sibling = self.find_sibling_of(hash);
-    //     }
+            #[cfg(not(feature = "hash"))]
+            {
+                hash = combine_text;
+            };
 
-    //     let verify = sibling.map(|node| node.cmp_hash(hash)).unwrap_or(false);
+            sibling = self.find_sibling_of(hash.clone());
+        }
 
-    //     verify
-    // }
+        sibling.map(|node| node.hash() == hash).unwrap_or(false)
+    }
 }
 
 #[cfg(test)]
@@ -295,17 +291,25 @@ mod tests {
         not_found_sibling!(tree, "Hello");
     }
 
-    // #[test]
-    // fn verify() {
-    //     let node = generate_root_node!(EVEN_CASE);
-    //     let tree: MerkleTree = node.into();
+    #[test]
+    fn verify() {
+        macro_rules! verify {
+            ($case: expr) => {
+                let node = generate_root_node!($case);
+                let tree: MerkleTree = node.into();
 
-    //     let hash = crypto::as_sha256("C".as_bytes()).to_string();
-    //     assert!(tree.verify(hash.clone()), "failed to verify hash({hash})");
+                for origin in $case {
+                    #[cfg(feature = "hash")]
+                    let hash = crypto::as_sha256(origin.as_bytes()).to_string();
+                    #[cfg(not(feature = "hash"))]
+                    let hash = origin.to_owned();
 
-    //     // for origin in EVEN_CASE {
-    //     //     let hash = crypto::as_sha256(origin.as_bytes()).to_string();
-    //     //     assert!(tree.verify(hash.clone()), "failed to verify hash({hash})");
-    //     // }
-    // }
+                    assert!(tree.verify(hash.clone()), "failed to verify hash(hash)");
+                }
+            };
+        }
+
+        verify!(ODD_CASE);
+        verify!(EVEN_CASE);
+    }
 }
