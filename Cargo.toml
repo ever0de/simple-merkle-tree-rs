@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 sha2 = "0.10"
 typenum = "1.15"
+
+[features]
+default = ["hash"]
+hash = []

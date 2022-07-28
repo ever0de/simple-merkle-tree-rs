@@ -1,5 +1,7 @@
 # Simple `MerkleTree` implementation using Rust
 
+## Disable `hash` features
+
 ### Merkle tree structure without hashing
 
 ```rust

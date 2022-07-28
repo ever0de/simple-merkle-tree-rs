@@ -1,3 +1,4 @@
+#[cfg(feature = "hash")]
 use crate::crypto;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -43,7 +44,11 @@ impl MerkleNode {
                 &curr.hash,
                 &next.map(|node| &node.hash).unwrap_or(&String::new())
             );
+
+            #[cfg(feature = "hash")]
             let hash = crypto::as_sha256(value.as_bytes()).to_string();
+            #[cfg(not(feature = "hash"))]
+            let hash = value;
             let node = MerkleNode::new(
                 hash,
                 Some(Box::new(curr.clone())),
@@ -56,6 +61,14 @@ impl MerkleNode {
         Self::root(result)
     }
 
+    #[cfg(not(feature = "hash"))]
+    pub fn from_hash_list(hash_list: Vec<String>) -> Self {
+        let node_list = hash_list.into_iter().map(Self::empty_new).collect();
+
+        Self::root(node_list)
+    }
+
+    #[cfg(feature = "hash")]
     pub fn from_hash_list(hash_list: Vec<String>) -> Self {
         let node_list = hash_list
             .iter()
@@ -145,6 +158,33 @@ impl MerkleTree {
             }
         }
     }
+
+    // pub fn verify(&self, hash: String) -> bool {
+    //     let mut sibling = self.find_sibling_of(hash.clone());
+
+    //     while let Some(node) = &sibling {
+    //         match &node {
+    //             LocationNode::Root(_) => println!("root"),
+    //             LocationNode::Left(_) => println!("left"),
+    //             LocationNode::Right(_) => println!("right"),
+    //         }
+
+    //         let combine_text = match node {
+    //             LocationNode::Root(node) => return node.hash == hash,
+    //             LocationNode::Left(node) => format!("{}{}", node.hash, hash),
+    //             LocationNode::Right(node) => format!("{}{}", hash, node.hash),
+    //         };
+
+    //         #[cfg(feature = "hash")]
+    //         let hash = crypto::as_sha256(combine_text.as_bytes()).to_string();
+    //         println!("{hash}");
+    //         sibling = self.find_sibling_of(hash);
+    //     }
+
+    //     let verify = sibling.map(|node| node.cmp_hash(hash)).unwrap_or(false);
+
+    //     verify
+    // }
 }
 
 #[cfg(test)]
@@ -170,26 +210,43 @@ mod tests {
             };
         }
 
+        #[cfg(feature = "hash")]
         assert_hash_eq!(
             EVEN_CASE,
             "24A5154C51E5EA8F72DBFCD82F42202F94BB34E1A1D764814D0A0BE012DD866E"
         );
+        #[cfg(not(feature = "hash"))]
+        assert_hash_eq!(EVEN_CASE, "ABCDEFGH");
 
+        #[cfg(feature = "hash")]
         assert_hash_eq!(
             ODD_CASE,
             "AE4F3A195A3CBD6A3057C205DEF94520930F03F51F73C5A540D8FDAB05163FEF"
         );
+        #[cfg(not(feature = "hash"))]
+        assert_hash_eq!(ODD_CASE, "ABCDE");
     }
 
     #[test]
     fn find_sibling_of() {
         macro_rules! find_sibling {
-            ($tree: expr, $origin: expr) => {{
-                let hash = crypto::as_sha256($origin.as_bytes()).to_string();
+            ($tree: expr, $left: expr, $right: expr) => {{
+                #[cfg(feature = "hash")]
+                let hash = crypto::as_sha256($left.as_bytes()).to_string();
+                #[cfg(not(feature = "hash"))]
+                let hash = $left.to_owned();
+
                 let sibling = $tree
                     .find_sibling_of(hash.clone())
                     .expect(&format!("not found {hash} in merkle tree"));
-                assert_eq!(sibling.hash(), hash);
+
+                #[cfg(feature = "hash")]
+                assert_eq!(
+                    sibling.hash(),
+                    crypto::as_sha256($right.as_bytes()).to_string()
+                );
+                #[cfg(not(feature = "hash"))]
+                assert_eq!(sibling.hash(), $right);
 
                 sibling
             }};
@@ -197,7 +254,10 @@ mod tests {
 
         macro_rules! not_found_sibling {
             ($tree: expr, $origin: expr) => {
+                #[cfg(feature = "hash")]
                 let hash = crypto::as_sha256($origin.as_bytes()).to_string();
+                #[cfg(not(feature = "hash"))]
+                let hash = $origin.to_owned();
                 let sibling = $tree.find_sibling_of(hash.clone());
 
                 assert!(sibling.is_none(), "found {hash} in merkle tree")
@@ -205,8 +265,8 @@ mod tests {
         }
 
         macro_rules! assert_node_eq {
-            ($tree: expr, $origin: expr) => {
-                let sibling = find_sibling!($tree, $origin);
+            ($tree: expr, $left: expr, $right: expr) => {
+                let sibling = find_sibling!($tree, $left, $right);
                 let node = sibling.node();
 
                 assert_eq!(node.left, None);
@@ -217,19 +277,35 @@ mod tests {
         let node = generate_root_node!(EVEN_CASE);
         let tree: MerkleTree = node.into();
 
-        for origin in EVEN_CASE {
-            assert_node_eq!(tree, origin);
-        }
+        assert_node_eq!(tree, "A", "B");
+        assert_node_eq!(tree, "B", "A");
+        assert_node_eq!(tree, "C", "D");
+        assert_node_eq!(tree, "D", "C");
 
         not_found_sibling!(tree, "Hello");
 
         let node = generate_root_node!(ODD_CASE);
         let tree: MerkleTree = node.into();
 
-        for origin in ODD_CASE {
-            assert_node_eq!(tree, origin);
-        }
+        assert_node_eq!(tree, "A", "B");
+        assert_node_eq!(tree, "B", "A");
+        assert_node_eq!(tree, "C", "D");
+        assert_node_eq!(tree, "D", "C");
 
         not_found_sibling!(tree, "Hello");
     }
+
+    // #[test]
+    // fn verify() {
+    //     let node = generate_root_node!(EVEN_CASE);
+    //     let tree: MerkleTree = node.into();
+
+    //     let hash = crypto::as_sha256("C".as_bytes()).to_string();
+    //     assert!(tree.verify(hash.clone()), "failed to verify hash({hash})");
+
+    //     // for origin in EVEN_CASE {
+    //     //     let hash = crypto::as_sha256(origin.as_bytes()).to_string();
+    //     //     assert!(tree.verify(hash.clone()), "failed to verify hash({hash})");
+    //     // }
+    // }
 }

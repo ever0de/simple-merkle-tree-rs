@@ -1,3 +1,5 @@
+#![cfg(feature = "hash")]
+
 use sha2::{digest::generic_array::GenericArray, Digest, Sha256};
 use typenum::consts::U32;
 
