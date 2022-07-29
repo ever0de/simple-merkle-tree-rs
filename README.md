@@ -1,5 +1,7 @@
 # Simple `MerkleTree` implementation using Rust
 
+[![Coverage Status](https://coveralls.io/repos/github/ever0de/simple-merkle-tree-rs/badge.svg)](https://coveralls.io/github/ever0de/simple-merkle-tree-rs)
+
 ## Disable `hash` features
 
 ### Merkle tree structure without hashing
