@@ -96,17 +96,19 @@ pub enum LocationNode {
     Right(MerkleNode),
 }
 
-impl LocationNode {
-    pub fn node(&self) -> &MerkleNode {
+impl AsRef<MerkleNode> for LocationNode {
+    fn as_ref(&self) -> &MerkleNode {
         use LocationNode::*;
 
         match self {
             Root(node) | Left(node) | Right(node) => node,
         }
     }
+}
 
+impl LocationNode {
     pub fn hash(&self) -> &str {
-        &self.node().hash
+        &self.as_ref().hash
     }
 }
 
@@ -263,7 +265,7 @@ mod tests {
         macro_rules! assert_node_eq {
             ($tree: expr, $left: expr, $right: expr) => {
                 let sibling = find_sibling!($tree, $left, $right);
-                let node = sibling.node();
+                let node = sibling.as_ref();
 
                 assert_eq!(node.left, None);
                 assert_eq!(node.right, None);
